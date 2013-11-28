@@ -1,11 +1,15 @@
 trello-hipchat
 ==============
-
 We use Trello as online task board for iterative software development
 and HipChat as visualisation tool for our development flow. For that
-we need to see in the chat when tasks in Trello move. Trello-hipchat
-does that by using the Trello Webhooks API and the HipChat Python
-bindings.
+we need to see in the chat when tasks in Trello move.
+
+This might be useful for other (distributed) teams who are using Trello
+as a digital representation of a Kanban or Scrum Board in agile software
+development projects.
+
+Trello-hipchat does that by using the Trello Webhooks API and the HipChat
+python bindings.
 
 The webhooks API requires a callback URL that gets POST request, if the
 state of a Trello model changes. For that reason, trello-hipchat is a
@@ -16,7 +20,6 @@ administration. But you can of course run it yourself on wsgi-enabled
 servers or via a reverse proxy setup.
 
 ## Installation
-
 This describes how to get trello up an running on Heroku.
 
 First you need to create trello-hipchat.cfg. It needs a bunch of
