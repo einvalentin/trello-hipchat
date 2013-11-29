@@ -38,7 +38,9 @@ Assuming you bootstrapped yourself as heroku user (create a heroku account, down
     $ heroku open
 
 Now if you login to Trello and move some tasks, you should get messages
-in your chat room.
+in your chat room. *Note that for bootstrapping you need to request some
+URL in the webapp at least once with a webbrowser*. It is OK if you
+see a 404 error or (if you request /board_modified) a 401.
 
 ## Configuration
 There is one configuration file for the webapp called 'trello-hipchat.cfg' next to the app.
