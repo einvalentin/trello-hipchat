@@ -86,6 +86,8 @@ def parse(action):
             parsed['action'] = 'started working on'
         if config.get('trello', 'list_done') in list_after:
             parsed['action'] = 'finished'
+        if config.get('trello', 'list_in_review') in list_after:
+            parsed['action'] = 'finshed coding'
         parsed['name'] = action['memberCreator']['fullName']
         parsed['item'] = action['data']['card']['name']
         return parsed
