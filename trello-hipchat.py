@@ -54,8 +54,12 @@ def board_modified():
         raise e
 
     payload = json.loads(request.data)
-    if 'updateCard' in payload['action']['type']:
+
+    event_type = payload['action']['type']
+
+    if event_type is 'updateCard' or event_type is 'createCard':
             handle_card_update(payload['action'])
+
     return 'Thanks, Trello...'
 
 def verify_request():
@@ -76,18 +80,27 @@ def handle_card_update(action):
         notify_hipchat('%(name)s just %(action)s %(item)s' % (parsed))
 
 def parse(action):
+
+    list_todo = 'To Do'
+    list_in_review = 'In Review'
+    list_in_progress = 'Doing'
+    list_done = 'Done'
+    list_bugtracker = 'Bug Reports'
+
     try:
-        list_after = action['data']['listAfter']['id']
-        list_before = action['data']['listBefore']['id']
+        list_after = action['data']['listAfter']['name']
+        list_before = action['data']['listBefore']['name']
         parsed = {}
-        if config.get('trello', 'list_todo') in list_after:
+        if list_todo == list_after:
             parsed['action'] = 'put back'
-        if config.get('trello', 'list_in_progress') in list_after:
+        if list_in_progress in list_after:
             parsed['action'] = 'started working on'
-        if config.get('trello', 'list_done') in list_after:
+        if list_done == list_after:
             parsed['action'] = 'finished'
-        if config.get('trello', 'list_in_review') in list_after:
+        if list_in_review == list_after:
             parsed['action'] = 'finshed coding'
+        if list_bugtracker == list_after:
+            parsed['action'] = 'created a new bug: '
         parsed['name'] = action['memberCreator']['fullName']
         parsed['item'] = action['data']['card']['name']
         return parsed
