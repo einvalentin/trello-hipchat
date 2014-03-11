@@ -42,10 +42,16 @@ config.read('trello-hipchat.cfg')
 
 @app.route('/board_modified', methods=['POST', 'HEAD'])
 def board_modified():
+    """
+    This is the callback handler, that is called by Trellos webhook API.
+    The easiest way to stop callbacks is to "return 'gone', 410" from this method :-)
+    """
     if 'HEAD' in request.method:
-        logger.debug('Trello is checking us out... Well - hello there!')
+        logger.debug('Trello is checking us out... Well - hello there! %s', request.data)
         return "Welcome dear Trello..."
-    # The registration HEAD for some reason does not come with a verification header...
+
+    # The registration HEAD for some reason does not come with a verification header so therefore we only
+    # verify POST requests.
     try:
         verify_request()
     except Unauthorized, e:
@@ -57,12 +63,17 @@ def board_modified():
 
     event_type = payload['action']['type']
 
-    if event_type is 'updateCard' or event_type is 'createCard':
+    if event_type == 'updateCard' or event_type == 'createCard':
             handle_card_update(payload['action'])
 
     return 'Thanks, Trello...'
 
 def verify_request():
+    """
+    Verifies Trello requests using the HMAC mechanism described in the trello docs. This
+    makes sure that the sources of the callbacks are coming from our trello board. If verification
+    fals, this method raises Unauthorized().
+    """
     secret = config.get('trello', 'secret')
     cb = config.get('integration', 'callback_url')
     raw = request.data + cb
@@ -80,33 +91,49 @@ def handle_card_update(action):
         notify_hipchat('%(name)s just %(action)s %(item)s' % (parsed))
 
 def parse(action):
-
-    list_todo = 'To Do'
-    list_in_review = 'In Review'
-    list_in_progress = 'Doing'
-    list_done = 'Done'
-    list_bugtracker = 'Bug Reports'
-
+    """
+    Parses the trello request into a dict with action (a sentence), name and item.
+    Returns this parsed structure or None, if the trello request could not be parsed.
+    """
     try:
-        list_after = action['data']['listAfter']['name']
-        list_before = action['data']['listBefore']['name']
+        if action['type'] == 'createCard':
+            list_after = action['data']['list']['name']
+        else:
+            list_after = action['data']['listAfter']['name']
         parsed = {}
-        if list_todo == list_after:
+
+        logger.debug('card in list %s.', list_after)
+
+        if list_after == get_list_name('list_name_todo'):
             parsed['action'] = 'put back'
-        if list_in_progress in list_after:
+
+        elif list_after == get_list_name('list_name_progress'):
             parsed['action'] = 'started working on'
-        if list_done == list_after:
-            parsed['action'] = 'finished'
-        if list_in_review == list_after:
+
+        elif list_after == get_list_name('list_name_review'):
             parsed['action'] = 'finshed coding'
-        if list_bugtracker == list_after:
+
+        elif list_after == get_list_name('list_name_done'):
+            parsed['action'] = 'finished'
+
+        elif list_after == get_list_name('list_name_bugtracker'):
             parsed['action'] = 'created a new bug: '
+
+        else:
+            parsed['action'] = 'used unconfigured list %s' % list_after
+
         parsed['name'] = action['memberCreator']['fullName']
         parsed['item'] = action['data']['card']['name']
         return parsed
+
     except KeyError, e:
         logger.debug("""Got a KeyError (%s) while parsing request from Trello.
             Probably this was not a move card event...""", e)
+
+def get_list_name(config_name):
+    """Return the trello list name"""
+    return config.get('trello', config_name)
+
 
 def notify_hipchat(msg):
     logger.debug('Sending "%s" to hipchat' % msg)
@@ -117,6 +144,13 @@ def notify_hipchat(msg):
 def init():
     # Run the init in another thread so that the other endpoints can answer.
     Thread(target=register_at_trello).start()
+
+    logger.debug('Configured boards: %s -> %s -> %s -> %s -> %s',
+        get_list_name('list_name_todo'),
+        get_list_name('list_name_progress'),
+        get_list_name('list_name_review'),
+        get_list_name('list_name_done'),
+        get_list_name('list_name_bugtracker'))
 
 def register_at_trello():
     create_webhook = {
